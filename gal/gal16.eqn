@@ -1,0 +1,41 @@
+GAL16V8
+TIMEX-GAL16
+; Timex Interface GAL16
+
+;**** INPUT PINS ****
+;PIN 1   = A15;      ZX Spectrum A15
+;PIN 2   = A14;      ZX Spectrum A14
+;PIN 3   = A13;      ZX Spectrum A13
+;PIN 4   = A10;      ZX Spectrum A10
+;PIN 5   = A9;       ZX Spectrum A9
+;PIN 6   = A3;       ZX Spectrum A3
+;PIN 7   = A2;       ZX Spectrum A2
+;PIN 8   = /MREQ;    ZX Spectrum /MREQ
+;PIN 9   = /M1;      ZX Spectrum /M1
+;PIN 10  = GND;
+;
+;**** OUTPUT PINS ****
+;PIN 11  = ls109Q;   RAM region decode (optional) - or use as input 
+;PIN 12  = ls109K;   Page-in condition (RESET)
+;PIN 13  = O13;      Address 0x0000 detector (feedback for paging logic)
+;PIN 14  = P14;      I/O address decode helper
+;PIN 15  = nRAMCS;   nRAMCS: Interface RAM chip select (0x2000-0x3FFF)
+;PIN 16  = nROMCS;   nROMCS: Interface ROM chip select (0x0000-0x1FFF)
+;PIN 17  = ls109J;   Page-out condition (SET)
+;PIN 18  = nZXROMCS; nZXROMCS: Master ROM control signal
+;PIN 19  = P19;      Address range detector (0x0000-0x1FFF)
+;PIN 20  = VCC;
+
+A15 A14 A13 A10 A9 A3 A2 nMREQ nM1 GND
+ls109Q ls109K O13 P14 nRAMCS nROMCS ls109J nZXROMCS P19 VCC
+
+/P19 = /A14 * /A15 * /A13
+/nZXROMCS = /ls109J * /ls109Q
+/ls109J = A10 + A9 + A2 + O13 + nM1
+/nROMCS = /A14 * /A15 * /A13 * nZXROMCS * /nMREQ
+/nRAMCS = /A14 * /A15 * A13 * nZXROMCS * /nMREQ
+/P14 = /A3 + /A2
+/ls109K = A10 * A9 * /A3 * A2 * /O13 * /nM1
+
+DESCRIPTION:
+Timex Interface GAL16

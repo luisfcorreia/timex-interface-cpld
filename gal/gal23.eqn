@@ -1,0 +1,37 @@
+GAL16V8
+TIMEX-GAL23
+; Timex Interface GAL23
+
+;**** INPUT PINS ****
+;PIN 1   = A12;           ZX Spectrum A12
+;PIN 2   = nIORQ;         ZX Spectrum /IORQ
+;PIN 3   = nRD;           ZX Spectrum /RD
+;PIN 4   = A8;            ZX Spectrum A8
+;PIN 5   = A11;           ZX Spectrum A11
+;PIN 6   = A7;            ZX Spectrum A7
+;PIN 7   = A6;            ZX Spectrum A6
+;PIN 8   = A5;            ZX Spectrum A5
+;PIN 9   = A4;            ZX Spectrum A4
+;PIN 10  = GND;
+;
+;**** OUTPUT PINS ****
+;PIN 11  = NC		  Not connected
+;PIN 12  = nLS273;        I/O write strobe for port 0x3F
+;PIN 13  = o13;           Address 0x0000 detector (feedback for paging logic)
+;PIN 14  = p14;           I/O address decode helper
+;PIN 15  = p19;           Address range detector (0x0000-0x1FFF)
+;PIN 16  = A1;            ZX Spectrum A1
+;PIN 17  = nWR;           ZX Spectrum /WR
+;PIN 18  = A0;            ZX Spectrum A0
+;PIN 19  = nLS244;        I/O read strobe for port 0x3F
+;PIN 20  = VCC;
+
+A12 nIORQ nRD A8 A11 A7 A6 A5 A4 GND
+NC nLS273 o13 p14 p19 A1 nWR A0 nLS244 VCC
+
+nLS273 = /nIORQ * /nWR * A5 * /A4 * p14 * A1 * A0
+/nLS244 = /nIORQ * /nRD * A5 * /A4 * p14 * A1 * A0
+/o13 = /A12 * /A8 * /A11 * /A7 * /A6 * /A5 * /A4 * /p19 * /A1 * /A0 
+
+DESCRIPTION:
+Timex Interface GAL23
