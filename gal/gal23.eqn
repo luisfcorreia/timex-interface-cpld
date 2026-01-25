@@ -15,21 +15,21 @@ TIMEX-GAL23
 ;PIN 10  = GND;
 ;
 ;**** OUTPUT PINS ****
-;PIN 11  = NC		  Not connected
-;PIN 12  = nLS273;        I/O write strobe for port 0x3F
+;PIN 11  = NC		          Not connected
+;PIN 12  = LS273;         I/O write strobe for port 0x3F (active HIGH)
 ;PIN 13  = o13;           Address 0x0000 detector (feedback for paging logic)
 ;PIN 14  = p14;           I/O address decode helper
 ;PIN 15  = p19;           Address range detector (0x0000-0x1FFF)
 ;PIN 16  = A1;            ZX Spectrum A1
 ;PIN 17  = nWR;           ZX Spectrum /WR
 ;PIN 18  = A0;            ZX Spectrum A0
-;PIN 19  = nLS244;        I/O read strobe for port 0x3F
+;PIN 19  = nLS244;        I/O read strobe for port 0x3F (active LOW)
 ;PIN 20  = VCC;
 
 A12 nIORQ nRD A8 A11 A7 A6 A5 A4 GND
-NC nLS273 o13 p14 p19 A1 nWR A0 nLS244 VCC
+NC LS273 o13 p14 p19 A1 nWR A0 nLS244 VCC
 
-nLS273 = /nIORQ * /nWR * A5 * /A4 * p14 * A1 * A0
+LS273 = /nIORQ * /nWR * A5 * /A4 * p14 * A1 * A0
 /nLS244 = /nIORQ * /nRD * A5 * /A4 * p14 * A1 * A0
 /o13 = /A12 * /A8 * /A11 * /A7 * /A6 * /A5 * /A4 * /p19 * /A1 * /A0 
 
