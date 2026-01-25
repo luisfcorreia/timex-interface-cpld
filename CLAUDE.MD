@@ -1,6 +1,4 @@
-Guidelines for aiding with development
-
-# Claude Instructions for WD1770-SD Project
+#Guidelines for aiding with development
 
 ## Project Overview
 This is a ZX Spectrum hardware interface add-on card for a Timex FDD system.
