@@ -159,20 +159,20 @@ module wd1770_sd (
     // Timex Interface I/O Port Decode (from original GAL23)
     // ========================================================================
     
-    // nLS273: I/O write strobe for port 0x3F
+    // LS273: I/O write strobe for port 0x3F (ACTIVE HIGH)
     // Equation: nLS273 = /IORQ * /WR * A5 * /A4 * p14 * A1 * A0
-    // Active HIGH when writing to I/O port 0x3F:
+    // Active high when writing to I/O port 0x3F:
     //   A5=1, A4=0, A3=1, A2=1 (via P14), A1=1, A0=1
     //   nIORQ=0, nWR=0
     // Port decode: 0bXX11XXXX with lower bits 111111 = 0x3F
-    assign LS273 = nIORQ | nWR | ~A5 | A4 | ~P14 | ~A1 | ~A0;
-    
-    // nLS244: I/O read strobe for port 0x3F
+    assign LS273 = ~nIORQ & ~nWR & A5 & ~A4 & P14 & A1 & A0;
+
+    // nLS244: I/O read strobe for port 0x3F (ACTIVE LOW)
     // Equation: /nLS244 = /IORQ * /RD * A5 * /A4 * p14 * A1 * A0
     // Active low when reading from I/O port 0x3F:
     //   A5=1, A4=0, A3=1, A2=1 (via P14), A1=1, A0=1
     //   nIORQ=0, nRD=0
-    // Same port as nLS273 for bidirectional WD1770 register access
-    assign nLS244 = nIORQ | nRD | ~A5 | A4 | ~P14 | ~A1 | ~A0;
+    // Same port as LS273 for bidirectional WD1770 register access
+    assign nLS244 = ~(~nIORQ & ~nRD & A5 & ~A4 & P14 & A1 & A0);
 
 endmodule
