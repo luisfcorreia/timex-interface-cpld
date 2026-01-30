@@ -8,41 +8,41 @@
 # ============================================================================
 
 # Address Bus
-NET "A0"  LOC = "P41";
-NET "A1"  LOC = "P42";
-NET "A2"  LOC = "P2";
-NET "A3"  LOC = "P3";
-NET "A4"  LOC = "P5";
-NET "A5"  LOC = "P6";
-NET "A6"  LOC = "P7";
-NET "A7"  LOC = "P8";
-NET "A8"  LOC = "P12";
-NET "A9"  LOC = "P13";
-NET "A10" LOC = "P14";
-NET "A11" LOC = "P16";
-NET "A12" LOC = "P18";
-NET "A13" LOC = "P19";
-NET "A14" LOC = "P20";
-NET "A15" LOC = "P21";
+NET "A0"  LOC = "P30";
+NET "A1"  LOC = "P28";
+NET "A2"  LOC = "P12";
+NET "A3"  LOC = "P8";
+NET "A4"  LOC = "P32";
+NET "A5"  LOC = "P33";
+NET "A6"  LOC = "P34";
+NET "A7"  LOC = "P36";
+NET "A8"  LOC = "P38";
+NET "A9"  LOC = "P7";
+NET "A10" LOC = "P6";
+NET "A11" LOC = "P37";
+NET "A12" LOC = "P41";
+NET "A13" LOC = "P5";
+NET "A14" LOC = "P3";
+NET "A15" LOC = "P2";
 
 # ============================================================================
 # ZX Spectrum Control Signals (5 pins)
 # ============================================================================
 
 # Control Signals
-NET "nIORQ" LOC = "P27";
-NET "nMREQ" LOC = "P28";
-NET "nRD"   LOC = "P29";
-NET "nWR"   LOC = "P30";
-NET "nM1"   LOC = "P31";
+NET "nIORQ" LOC = "P40";
+NET "nMREQ" LOC = "P13";
+NET "nRD"   LOC = "P39";
+NET "nWR"   LOC = "P29";
+NET "nM1"   LOC = "P14";
 
 # ============================================================================
 # Chip Select Outputs (5 pins)
 # ============================================================================
 
 # Output Signals
-NET "nZX_ROMCS" LOC = "P32";
-NET "nROM_CS" LOC = "P33";
-NET "nRAM_CS" LOC = "P34";
-NET "LS273" LOC = "P36";
-NET "nLS244" LOC = "P37";
+NET "nZX_ROMCS" LOC = "P19";
+NET "nROM_CS"   LOC = "P16";
+NET "nRAM_CS"   LOC = "P18";
+NET "LS273"     LOC = "P27";
+NET "nLS244"    LOC = "P31";
