@@ -18,7 +18,7 @@
 //   Pages IN:  Read from 0x0000 or 0x0008
 //   Pages OUT: Access to 0x0604 region
 //
-// I/O Port: 0x3F (A5=1, A4=0, A3=1, A2=1, A1=1, A0=1)
+// I/O Port: 0x3F fully decoded from lower 8 bits
 //
 // ============================================================================
 
@@ -61,12 +61,6 @@ module timex_interface (
     output wire nRAM_CS,
     output wire LS273,
     output wire nLS244,
-
-    // debug internals    
-    output wire PAGEIN,
-    output wire PAGEOUT,
-    output wire J,
-    output wire K
         
 );
 
@@ -76,53 +70,58 @@ module timex_interface (
     wire pageinaddress;
     wire pageoutaddress;
     wire ioport;
+    wire pagein_trigger;
+    wire pageout_trigger;
 
     // State register: 0=paged OUT, 1=paged IN
     reg interface_enabled = 1'b0;
 
     // ========================================================================
-    assign pageinaddress = ~A15 & ~A14 & ~A13 & ~A12 & ~A11 & ~A10 & ~A9 & ~A8 & ~A7 & ~A6 & ~A5 & ~A4 & ~A1 & ~A0;
-    assign pageoutaddress = ~A15 & ~A14 & ~A13 & ~A12 & ~A11 & A10 & A9 & ~A8 & ~A7 & ~A6 & ~A5 & ~A4 & ~A3 & A2 & ~A1 & ~A0;
-    assign ioport = A7 & A6 & A5 & ~A4 & A3 & A2 & A1 & A0;
-    
-	// Paging control signals (active HIGH when condition met)
-	assign pagein_trigger = pageinaddress & ~nM1 & ~nMREQ;  // Page in during M1 cycle at 0x0000
-	assign pageout_trigger = pageoutaddress & ~nMREQ;      // Page out when accessing 0x0604
+    // Full address decoding, activates on 0x0000 or 0x0008 bus access
+    assign pageinaddress = (~A15 & ~A14 & ~A13 & ~A12 & ~A11 & ~A10 & ~A9 & ~A8 & ~A7 & ~A6 & ~A5 & ~A4 & ~A3 & ~A2 & ~A1 & ~A0) |
+                           (~A15 & ~A14 & ~A13 & ~A12 & ~A11 & ~A10 & ~A9 & ~A8 & ~A7 & ~A6 & ~A5 & ~A4 &  A3 & ~A2 & ~A1 & ~A0);
 
-    // State machine on memory cycle completion
-    always @(posedge nMREQ) begin
+    // ========================================================================
+    // Full address decoding, activates on 0x0604 bus access
+    assign pageoutaddress = ~A15 & ~A14 & ~A13 & ~A12 & ~A11 &  A10 &  A9 & ~A8 & ~A7 & ~A6 & ~A5 & ~A4 & ~A3 &  A2 & ~A1 & ~A0;
+
+    // ========================================================================
+    // Full 0xEF ioport decoding (6 bit data bus interface with Timex FDD    )
+    assign ioport         = ~nIORQ & A7 & A6 & A5 & ~A4 & A3 & A2 & A1 & A0;
+    
+	// Page in trigger, activates on 0x0000|0x0008 during instruction fetch cycle
+	assign pagein_trigger  = pageinaddress  & ~nMREQ & ~nM1 & -nRD;
+	
+	// Page in trigger, activates on 0x0604 memory read
+	assign pageout_trigger = pageoutaddress & ~nMREQ & -nRD;
+
+    // Interface enabled state machine
+    always @(negedge nMREQ) begin
         if (pagein_trigger)
             interface_enabled <= 1'b1;  // Page IN
-        else if (pageout_trigger)
+            
+        if (pageout_trigger)
             interface_enabled <= 1'b0;  // Page OUT
-        // else: hold current state
     end
     
 	// nZX_ROMCS logic
 	// When paged IN (Q=1), we want interface active, so nZX_ROMCS should be HIGH
 	// When paged OUT (Q=0), we want ZX ROM active, so nZX_ROMCS should be LOW
-	assign nZX_ROMCS = ~interface_enabled;  // Simple: Q directly controls it
+	assign nZX_ROMCS = interface_enabled;
 
-	// Chip selects work when interface is paged IN (nZX_ROMCS HIGH)
-	assign nROM_CS = ~(~A14 & ~A15 & ~A13 & interface_enabled & ~nMREQ);
-	assign nRAM_CS = ~(~A14 & ~A15 & A13 & interface_enabled & ~nMREQ);    
+	// Interface 4K ROM enable
+	assign nROM_CS = ~(interface_enabled & ~nMREQ & ~A15 & ~A14 & ~A13);
+	
+	// Interface 2K RAM enable
+	assign nRAM_CS = ~(interface_enabled & ~nMREQ & ~A15 & ~A14 &  A13);
+	
     // ========================================================================
-    // GAL23 - Timex Interface I/O Port Decode
-    // ========================================================================
+    // IO port 0xEF interface data bus with Timex FDD    
     
-    // LS273: I/O write strobe for port 0x3F (ACTIVE HIGH)
-    // GAL23 Equation: nLS273 = /nIORQ * /nWR * A5 * /A4 * p14 * A1 * A0
-    // Active high when writing to port 0x3F
-    // Port decode: A5=1, A4=0, A3=1 & A2=1 (via P14), A1=1, A0=1 = 0x3F
-    assign LS273 = ~nIORQ & ~nWR & ioport;
+    // LS273: I/O write strobe (ACTIVE HIGH)
+    assign LS273 = ~nWR & ioport;
 
-    // nLS244: I/O read strobe for port 0x3F (ACTIVE LOW)
-    // GAL23 Equation: /nLS244 = /nIORQ * /nRD * A5 * /A4 * p14 * A1 * A0
-    // Active low when reading from I/O port 0x3F
-    assign nLS244 = ~(~nIORQ & ~nRD & ioport);
-
-    assign PAGEIN = pageinaddress;
-    assign PAGEOUT = pageoutaddress;
-    assign K = interface_enabled;
+    // nLS244: I/O read strobe (ACTIVE LOW)
+    assign nLS244 = ~(~nRD & ioport);
 
 endmodule

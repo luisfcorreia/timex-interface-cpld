@@ -47,10 +47,3 @@ NET "nZX_ROMCS" LOC = "P19";
 NET "LS273"     LOC = "P27";
 NET "nLS244"    LOC = "P31";
 
-# debug internal pins
-NET "PAGEIN"    LOC = "P20";
-NET "PAGEOUT"   LOC = "P21";
-NET "J"         LOC = "P22";
-NET "K"         LOC = "P23";
-
-
