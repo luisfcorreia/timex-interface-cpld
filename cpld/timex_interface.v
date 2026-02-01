@@ -1,33 +1,26 @@
 // ============================================================================
 // ZX Spectrum + Timex FDD Interface CPLD - XC9572XL 
-// CORRECTED VERSION - Fixed JK Flip-Flop Logic
 // ============================================================================
 // 
-// Replaces:
+// Replaces three chips from original design:
 //   - GAL16 (address decoding, chip selects, JK flip-flop control)
 //   - GAL23 (I/O port decoding)
 //   - LS109 J-K flip-flop (page-in/out state)
 //
 // Memory Map (when paged in):
 //   0x0000-0x0FFF: 4KB ROM
-//   0x1000-0x1FFF: ROM echo (A12 not decoded)
 //   0x2000-0x27FF: 2KB RAM
-//   0x2800-0x3FFF: RAM echoes (A11-A12 not decoded)
 //
 // Paging:
 //   Pages IN:  Read from 0x0000 or 0x0008
 //   Pages OUT: Access to 0x0604 region
 //
-// I/O Port: 0x3F fully decoded from lower 8 bits
+// I/O Port: 0x3F fully decoded from lower 8 bits (independant from interface activation)
 //
 // ============================================================================
 
 module timex_interface (
 
-    // ========================================================================
-    // ZX Spectrum Side Signals
-    // ========================================================================
-    
     // ZX Spectrum Address Bus
     input wire A0,
     input wire A1,
@@ -60,7 +53,7 @@ module timex_interface (
     output wire nROM_CS,
     output wire nRAM_CS,
     output wire LS273,
-    output wire nLS244,
+    output wire nLS244
         
 );
 
@@ -70,8 +63,8 @@ module timex_interface (
     wire pageinaddress;
     wire pageoutaddress;
     wire ioport;
-    wire pagein_trigger;
-    wire pageout_trigger;
+    wire pagein;
+    wire pageout;
 
     // State register: 0=paged OUT, 1=paged IN
     reg interface_enabled = 1'b0;
@@ -86,27 +79,25 @@ module timex_interface (
     assign pageoutaddress = ~A15 & ~A14 & ~A13 & ~A12 & ~A11 &  A10 &  A9 & ~A8 & ~A7 & ~A6 & ~A5 & ~A4 & ~A3 &  A2 & ~A1 & ~A0;
 
     // ========================================================================
-    // Full 0xEF ioport decoding (6 bit data bus interface with Timex FDD    )
+    // Full 0xEF ioport decoding (6 bit data bus interface with Timex FDD)
     assign ioport         = ~nIORQ & A7 & A6 & A5 & ~A4 & A3 & A2 & A1 & A0;
-    
-	// Page in trigger, activates on 0x0000|0x0008 during instruction fetch cycle
-	assign pagein_trigger  = pageinaddress  & ~nMREQ & ~nM1 & -nRD;
-	
-	// Page in trigger, activates on 0x0604 memory read
-	assign pageout_trigger = pageoutaddress & ~nMREQ & -nRD;
 
-    // Interface enabled state machine
+    // Page in trigger, activates on 0x0000|0x0008 during instruction fetch cycle
+    assign pagein         = pageinaddress   & ~nMREQ & -nRD & ~nM1;
+
+    // Page in trigger, activates on 0x0604 memory read
+    assign pageout        = pageoutaddress  & ~nMREQ & -nRD;
+
+    // Interface enabled control
     always @(negedge nMREQ) begin
-        if (pagein_trigger)
-            interface_enabled <= 1'b1;  // Page IN
-            
-        if (pageout_trigger)
-            interface_enabled <= 1'b0;  // Page OUT
+        if (pagein)  // Page IN
+            interface_enabled <= 1'b1;
+
+        if (pageout) // Page OUT
+            interface_enabled <= 1'b0;
     end
     
-	// nZX_ROMCS logic
-	// When paged IN (Q=1), we want interface active, so nZX_ROMCS should be HIGH
-	// When paged OUT (Q=0), we want ZX ROM active, so nZX_ROMCS should be LOW
+	// Disable ZX Spectrum internal ROM when Interface is enabled
 	assign nZX_ROMCS = interface_enabled;
 
 	// Interface 4K ROM enable
@@ -116,12 +107,9 @@ module timex_interface (
 	assign nRAM_CS = ~(interface_enabled & ~nMREQ & ~A15 & ~A14 &  A13);
 	
     // ========================================================================
-    // IO port 0xEF interface data bus with Timex FDD    
-    
-    // LS273: I/O write strobe (ACTIVE HIGH)
+    // IO port 0xEF data OUT LS273: write strobe (ACTIVE HIGH)
     assign LS273 = ~nWR & ioport;
-
-    // nLS244: I/O read strobe (ACTIVE LOW)
+    // IO port 0xEF data IN nLS244: read strobe (ACTIVE LOW)
     assign nLS244 = ~(~nRD & ioport);
 
 endmodule
