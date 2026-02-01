@@ -1,5 +1,6 @@
 // ============================================================================
 // ZX Spectrum + Timex FDD Interface CPLD - XC9572XL 
+// CORRECTED VERSION - Fixed JK Flip-Flop Logic
 // ============================================================================
 // 
 // Replaces:
@@ -59,89 +60,52 @@ module timex_interface (
     output wire nROM_CS,
     output wire nRAM_CS,
     output wire LS273,
-    output wire nLS244
+    output wire nLS244,
+
+    // debug internals    
+    output wire PAGEIN,
+    output wire PAGEOUT,
+    output wire J,
+    output wire K
+        
 );
 
     // ========================================================================
     // Internal Signals
     // ========================================================================
-    wire P14;    // I/O address decode helper (from GAL16)
-    wire P19;    // Address range detector (0x0000-0x1FFF) (from GAL16)
-    wire O13;    // Address 0x0000 detector (from GAL23, uses P19 from GAL16)
-    wire ff_J;   // JK flip-flop J input (page-out condition)
-    wire ff_K;   // JK flip-flop K input (page-in condition)
-    reg ff_Q;    // JK flip-flop state (0=paged out, 1=paged in)
+    wire pageinaddress;
+    wire pageoutaddress;
+    wire ioport;
+
+    // State register: 0=paged OUT, 1=paged IN
+    reg interface_enabled = 1'b0;
 
     // ========================================================================
-    // GAL16 - Address Decode Logic
-    // ========================================================================
+    assign pageinaddress = ~A15 & ~A14 & ~A13 & ~A12 & ~A11 & ~A10 & ~A9 & ~A8 & ~A7 & ~A6 & ~A5 & ~A4 & ~A1 & ~A0;
+    assign pageoutaddress = ~A15 & ~A14 & ~A13 & ~A12 & ~A11 & A10 & A9 & ~A8 & ~A7 & ~A6 & ~A5 & ~A4 & ~A3 & A2 & ~A1 & ~A0;
+    assign ioport = A7 & A6 & A5 & ~A4 & A3 & A2 & A1 & A0;
     
-    // P19: Active (low) when addressing 0x0000-0x1FFF range
-    // GAL16 Equation: /P19 = /A14 * /A15 * /A13
-    assign P19 = ~(~A14 & ~A15 & ~A13);
-    
-    // P14: I/O address decode helper (active low)
-    // GAL16 Equation: /P14 = /A3 + /A2
-    // Active low when either A3=0 or A2=0
-    assign P14 = ~(~A3 | ~A2);
-    
-    // ========================================================================
-    // GAL23 - Address 0x0000 Detector
-    // ========================================================================
-    
-    // O13: Detects access to address 0x0000
-    // GAL23 Equation: /o13 = /A12 * /A8 * /A11 * /A7 * /A6 * /A5 * /A4 * /p19 * /A1 * /A0
-    // Active low only when all address bits are 0 and P19 is active (low)
-    assign O13 = ~(~A12 & ~A8 & ~A11 & ~A7 & ~A6 & ~A5 & ~A4 & ~P19 & ~A1 & ~A0);
-    
-    // ========================================================================
-    // GAL16 - JK Flip-Flop Control Logic
-    // ========================================================================
-    
-    // ff_J: Page-out condition (SET)
-    // GAL16 Equation: /ls109_J = A10 + A9 + A2 + O13 + nM1
-    // Active low triggers page-out
-    assign ff_J = ~(A10 | A9 | A2 | O13 | nM1);
-    
-    // ff_K: Page-in condition (RESET)
-    // GAL16 Equation: /ls109_K = A10 * A9 * /A3 * A2 * /O13 * /nM1
-    // Active low when accessing 0x0600 range during non-M1
-    assign ff_K = ~(A10 & A9 & ~A3 & A2 & ~O13 & ~nM1);
-    
-    // ========================================================================
-    // LS109 - Page-in/out Flip-Flop
-    // ========================================================================
-    // Clocked by nMREQ rising edge (memory cycle completion)
-    // JK Truth Table (active-low inputs):
-    //   J=1, K=1: Hold current state
-    //   J=1, K=0: Reset (page in, Q=0)
-    //   J=0, K=1: Set (page out, Q=1)
-    //   J=0, K=0: Toggle state
+	// Paging control signals (active HIGH when condition met)
+	assign pagein_trigger = pageinaddress & ~nM1 & ~nMREQ;  // Page in during M1 cycle at 0x0000
+	assign pageout_trigger = pageoutaddress & ~nMREQ;      // Page out when accessing 0x0604
+
+    // State machine on memory cycle completion
     always @(posedge nMREQ) begin
-        case ({ff_J, ff_K})
-            2'b11: ff_Q <= ff_Q;      // Hold
-            2'b10: ff_Q <= 1'b0;      // Page in (K active)
-            2'b01: ff_Q <= 1'b1;      // Page out (J active)
-            2'b00: ff_Q <= ~ff_Q;     // Toggle
-        endcase
+        if (pagein_trigger)
+            interface_enabled <= 1'b1;  // Page IN
+        else if (pageout_trigger)
+            interface_enabled <= 1'b0;  // Page OUT
+        // else: hold current state
     end
     
-    // ========================================================================
-    // GAL16 - Memory Chip Select Generation
-    // ========================================================================
-    
-    // nZX_ROMCS: Master ROM control signal
-    // GAL16 Equation: /nZXROMCS = /ls109J * /ls109Q
-    assign nZX_ROMCS = ~(~ff_J & ~ff_Q);
-    
-    // nROM_CS: Interface ROM chip select (0x0000-0x1FFF)
-    // GAL16 Equation: /nROMCS = /A14 * /A15 * /A13 * nZXROMCS * /nMREQ
-    assign nROM_CS = ~(~A14 & ~A15 & ~A13 & nZX_ROMCS & ~nMREQ);
-    
-    // nRAM_CS: Interface RAM chip select (0x2000-0x3FFF)
-    // GAL16 Equation: /nRAMCS = /A14 * /A15 * A13 * nZXROMCS * /nMREQ
-    assign nRAM_CS = ~(~A14 & ~A15 & A13 & nZX_ROMCS & ~nMREQ);
-    
+	// nZX_ROMCS logic
+	// When paged IN (Q=1), we want interface active, so nZX_ROMCS should be HIGH
+	// When paged OUT (Q=0), we want ZX ROM active, so nZX_ROMCS should be LOW
+	assign nZX_ROMCS = ~interface_enabled;  // Simple: Q directly controls it
+
+	// Chip selects work when interface is paged IN (nZX_ROMCS HIGH)
+	assign nROM_CS = ~(~A14 & ~A15 & ~A13 & interface_enabled & ~nMREQ);
+	assign nRAM_CS = ~(~A14 & ~A15 & A13 & interface_enabled & ~nMREQ);    
     // ========================================================================
     // GAL23 - Timex Interface I/O Port Decode
     // ========================================================================
@@ -150,11 +114,15 @@ module timex_interface (
     // GAL23 Equation: nLS273 = /nIORQ * /nWR * A5 * /A4 * p14 * A1 * A0
     // Active high when writing to port 0x3F
     // Port decode: A5=1, A4=0, A3=1 & A2=1 (via P14), A1=1, A0=1 = 0x3F
-    assign LS273 = ~nIORQ & ~nWR & A5 & ~A4 & P14 & A1 & A0;
+    assign LS273 = ~nIORQ & ~nWR & ioport;
 
-    // nLS244: I/O read strobe for port 0x3F (ACTIVE LOW in GAL equation)
+    // nLS244: I/O read strobe for port 0x3F (ACTIVE LOW)
     // GAL23 Equation: /nLS244 = /nIORQ * /nRD * A5 * /A4 * p14 * A1 * A0
     // Active low when reading from I/O port 0x3F
-    assign nLS244 = ~(~nIORQ & ~nRD & A5 & ~A4 & P14 & A1 & A0);
+    assign nLS244 = ~(~nIORQ & ~nRD & ioport);
+
+    assign PAGEIN = pageinaddress;
+    assign PAGEOUT = pageoutaddress;
+    assign K = interface_enabled;
 
 endmodule
